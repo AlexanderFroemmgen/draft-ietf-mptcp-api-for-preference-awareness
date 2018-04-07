@@ -1,0 +1,356 @@
+﻿<?xml version="1.0" encoding="US-ASCII"?>
+<!-- Convert to HTML and Text with xml2rfc: http://xml2rfc.ietf.org. -->
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd" [
+  <!ENTITY RFC5533 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.5533.xml">
+  <!ENTITY RFC5062 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.5062.xml">
+  <!ENTITY RFC5061 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.5061.xml">
+  <!ENTITY RFC4960 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.4960.xml">
+  <!ENTITY RFC4987 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.4987.xml">
+  <!ENTITY RFC6234 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.6234.xml">
+  <!ENTITY RFC4086 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.4086.xml">
+  <!ENTITY RFC3168 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.3168.xml">
+  <!ENTITY RFC5681 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.5681.xml">
+  <!ENTITY RFC2119 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml">
+  <!ENTITY RFC2992 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.2992.xml">
+  <!ENTITY RFC2979 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.2979.xml">
+  <!ENTITY RFC2104 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.2104.xml">
+  <!ENTITY RFC2018 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.2018.xml">
+  <!ENTITY RFC1918 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.1918.xml">
+  <!ENTITY RFC0793 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.0793.xml">
+  <!ENTITY RFC1323 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.1323.xml">
+  <!ENTITY RFC1122 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.1122.xml">
+  <!ENTITY RFC3135 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.3135.xml">
+  <!ENTITY RFC3022 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.3022.xml">
+  <!ENTITY RFC6181 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.6181.xml">
+  <!ENTITY RFC6182 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.6182.xml">
+  <!ENTITY RFC6356 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.6356.xml">
+  <!ENTITY RFC6555 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.6555.xml">
+  <!ENTITY RFC5226 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.5226.xml">
+  <!ENTITY RFC6897 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.6897.xml">
+  <!ENTITY RFC6528 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.6528.xml">
+  <!ENTITY RFC5961 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.5961.xml">
+  <!ENTITY RFC6824 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.6824.xml">
+  <!ENTITY RFC6994 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.6994.xml">
+  <!ENTITY RFC7413 SYSTEM "https://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.7413.xml">
+]>
+<?xml-stylesheet type='text/xsl' href='rfc2629.xslt' ?>
+<?rfc strict="no" ?>
+<?rfc toc="yes"?>
+<?rfc tocdepth="4"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes" ?>
+<?rfc compact="yes" ?>
+<?rfc subcompact="no" ?>
+<?rfc rfcedstyle="yes"?>
+
+<rfc category="std" docName="draft-ietf-mptcp-api-for-preference-awareness" >
+  <front>
+    <title>An Extended Multipath TCP (MPTCP) API For Preference-Awareness</title>
+
+    <author fullname="Alexander Froemmgen" initials="A." surname="Froemmgen">
+      <organization>TU Darmstadt</organization>
+      <address>
+        <email>alexander.froemmgen@kom.tu-darmstadt.de</email>
+      </address>
+    </author>
+    
+    <!-- Please add your name if you contribute -->
+    
+    <date year="2018" />
+
+    <area>General</area>
+    <workgroup>Internet Engineering Task Force</workgroup>
+    <keyword>tcp extensions multipath multihomed subflow</keyword>
+
+    <abstract>
+      <t>Multipath TCP enables the simultaneous usage of multiple paths for a single logical connection.
+      Paths and their network interfaces are typically associated with different preferences, e.g., 
+      WiFi might be preferred over metered cellular networks.</t>
+      
+      <t>This document presents an extended API for preference-aware Multipath TCP.
+      This API enables the high-level specification of preferences with regard to target metrics such as acceptable round-trip time and preferred throughput rates.
+      This document further discusses possible ways to incorporate the specified preferences into the underlying network stack operations.
+      These operations are in particular the path management (when to establish and close subflows) and the packet scheluling (how to map packets on subflows).</t>
+    </abstract>
+  </front>
+
+  <middle>
+    <section title="Introduction" anchor="sec_intro">
+      <t>Multipath TCP <xref target="RFC6824"/> is a set of extensions to regular TCP <xref target="RFC0793"/> which enables  a transport connection to use multiple paths simultaneously. 
+      Previous RFCs specify the required protocol extensions <xref target="RFC6824"/>. 
+      Path preferences are restricted to the binary notion of backup subflows, i.e.,
+      a subflow where the receiver has indicated B=1 SHOULD NOT be used to send data unless there are no usable subflows where B=0.</t>
+      
+      <t>Previous work on MPTCP APIs proposed basic APIs to enable and disable MTPCP <xref target="RFC6897"/> or extended socket APIs to control the subflow establishment, the subflow teardown, and the subflow backup state <xref target="socket-api"/> <xref target="socket-api2"/>.</t>
+
+      <t>Controlling the subflow establishment and the subflow backup state enables to choose the used subflows.
+      However, applications and their developers might benefit from a higher-level of abstraction.
+      Implementing backup subflow control logic is error prone and requires a lot of effort and experience.
+      Additionally, control logic based on the subflows backup state might react to slow to retain target metrics such as preferred throughput rates.</t>
+      
+      <t>This document presents an extended API for preference-aware Multipath TCP.
+      This API enables the high-level specification of preferences with regard to target metrics such as acceptable round-trip time and preffered throughput rates instead of a binary notion and direct control of backup and non-backup subflows.
+      This document further discusses possible ways to incorporate the specified preference information into the underlying network stack operations, i.e., 
+      when to establish additional subflows (path management) and how to map packets on subflows (scheduling).</t>
+    </section>
+    
+    <section title="Background" anchor="sec_background">
+      <t>Multipath TCP provides a binary notion for subflow priorities.
+      Backup subflows should only be used if there are no regular paths available.
+      Hosts can indicate in the initial subflow establishment if a subflow should be treated as backup subflow or change the subflows backup state during operation using MP_PRIO options (<xref target="RFC6824"/> Section 2.5).
+      </t>
+
+      <t>The RFC states that scheduling, i.e., how to share traffic over the available paths, is not specified.
+      Instead, the RFC mentions monetary costs of links and properties such as throughput, delay and jitter as possible aspects to be considered (<xref target="RFC6824"/> Section 3.3.8).</t>
+      
+      <t>The Apple MPTCP implementation for iOS provides a limited preference API to choose between the four service types: None, Handover, Interactive, and Aggregate.
+      Some programming languages provide abstractions to specify preferences for network connections.
+      The Java socket, for example, provides the setPerformancePreferences(connectionTime, latency, bandwidth) method.
+      Further, socket intents were proposed for multi-access connectivity in <xref target="socket-intents"/>.</t>
+    </section>
+
+    <section title="Preference API" anchor="sec_req_and_real">
+      <t>This document presents the following four operations to specify preferences:</t>
+      
+      <figure align="center" anchor="fig_api" title="API for preference-awareness">
+          <artwork align="left"><![CDATA[
+  try_throughput_at_least(
+    value,
+    per_time,
+    direction [up/down], 
+    aggressiveness [optional, 0 - 10)
+    
+  try_rtt_below(
+    value,
+    aggressiveness [optional, 0 - 10])
+
+  expected_remaining_duration(
+    value)
+
+  expected_total_transfer(
+    value,
+    direction [up/down])
+]]></artwork>
+        </figure>
+        
+        <t>These operations are designed to enable optimizations by the underlying network stack.
+        Therefore, a general specification to minimize the round-trip time or maximize the throughput is intentionally not provided.</t>
+       
+        <t>The user of the API might provide conflicting preferences. 
+        In this case, the aggressiveness value might be used to resolve conflicts. 
+        In case the specified preferences are inappropriate, e.g., to prefer a round-trip time of zero and very large throughput values,
+        the underlying network stack might always fallback to normal operation.
+        In particular, the API does not provide guarantees with regard to the specified preferences and does not enable the specification of hard requirements.</t>
+        
+        <t>The API focuses on the most important metrics throughput and round-trip time.
+        Additional metrics, such as the round-trip time variance, might be included in the future.</t>
+        
+        <t>The mapping of the specified preferences to the underlying network stack operations might depend on additional configurations.
+        This decouples the application preferences from the path preferences of the user.
+        Thus, the network stack might consider preferences differently for a user with unlimited cellular network access compared with a user with  metered cellular network access.</t>
+    </section>
+    
+    <section title="Preference-aware Path Management" anchor="sec_path_management">
+        <t>The provided preferences might be used for an optimized path management.</t>
+        
+        <t>In case the network stack detects that throughput or round-trip time preferences are not fulfilled,
+        it might trigger the creation of additional subflows.
+        In case the network stack detects that all preferences can be fulfilled by a single subflow,
+        the other subflows might be closed.</t>
+        
+        <t>In case the application provides an expected remaining connection duration,
+        this information might be considered before triggering the creation of additional subflows.</t>
+    </section>
+    
+    <section title="Preference-aware Scheduling" anchor="sec_scheduling">
+        <t>The provided preferences might be used for an optimized packet scheduling, i.e., mapping of packets on subflows.</t>
+
+        <t>In case the network stack detects that all preferences can be fulfilled on non-backup subflows, 
+        packet scheduling can be restricted to these non-backup subflows.
+        In case round-trip time preferences cannot be fulfilled by non-backup subflows,
+        the scheduler can consider to use backup subflows if their round-trip times are significantly better, 
+        as illustrated in <xref target="progmp_rtt"/>.</t>
+        
+        <t>The scheduler might further split traffic preference-aware to retain throughput targets and subflow preferences at the same time,
+        as illustrated in <xref target="progmp"/>.</t>
+    </section>
+    
+    <section title="Protocol Level Discussion" anchor="sec_protocol">
+        <t>Both communication partners might have to communicate to fulfill the provided preferences.
+        There are three alternatives for this communication.</t>
+        
+        <t>In the first alternative,
+        one communication partner controls the other side by setting backup subflows accordingly.
+        This alternative does not require changes at the communication partner.
+        The communication delays and possible asymmetric knowledge limit this alternative.
+        In case the controlling communication partner detects that a preference is not fulfilled,
+        it requires at least a halve round-trip time to change the backup state at the communication partner.
+        Fine granular scheduling decisions, e.g., to transfer a constant bitrate stream preference-aware, are not possible due to this communication delay.</t>
+
+<figure align="center" anchor="fig_backup" title="Controlling the communication partner by setting the subflow backup state">
+          <artwork align="left"><![CDATA[
+                  TCP OPTION 
+                  BACKUP = 1
+        <------------------------------>
+                  Subflow 1
+Client                                        Server
+                  Subflow 2
+        <------------------------------>
+]]></artwork>
+</figure>
+        
+        <t>The second alternative extends the MPTCP options to transfer preference information.
+        This alternative requires protocol changes and therefore changes at the communication partner.</t>
+
+        <figure align="center" anchor="fig_extended_backup" title="Controlling the communication partner by transferring preference information in extended MPTCP options">
+          <artwork align="left"><![CDATA[
+                  TCP OPTION 
+               USE IF RTT ABOVE X
+        <------------------------------>
+                  Subflow 1
+Client                                        Server
+                  TCP OPTION 
+           USE IF THROUGHPUT BELOW X
+        <---------------------------->
+                  Subflow 2
+]]></artwork>
+</figure>
+        
+        <t>The third alternative uses an application layer protocol to transfer preference information decoupled from MPTCP.
+        This alternative does not require protocol changes.</t>
+
+        <figure align="center" anchor="fig_app_layer" title="Controlling the communication partner by transferring preference information with an application layer protocol">
+          <artwork align="left"><![CDATA[
+        <------------------------------>
+                  Subflow 1
+Client                                        Server
+  |               Subflow 2                     |
+  |      <------------------------------>       |
+  |                                             |
+  -----------------------------------------------
+            Dedicated Control Channel
+]]></artwork>
+</figure>            
+    </section>
+    
+    <section title="Security Considerations" anchor="security_considerations">
+        <t>There are no known security implications.</t>
+    </section>
+    
+    <section title="Open Questions" anchor="open_questions">
+        <t>In general, we assume the binary subflow preference notion of preferred vs non preferred.</t>
+        <t>Do we have to distinguish and discuss the difference between subflows, paths, or interfaces?</t>
+        <t>This API is very limited. E.g., we cannot express to use backup subflows BS instead of non-backup subflows NBS iff min(BS.RTT) is less than X and min(NBS.RTT) is above Y (see <xref target="progmp_rtt"/>.</t>
+        <t>What about signaling the end of an important application transfer unit? This is somehow related to preferences with regard to flow completion times.</t>
+    </section>
+    
+    </middle>
+    <back>
+    <references title="Normative References">
+      &RFC0793;
+      &RFC2119;
+      &RFC6182;
+      &RFC6824;
+    </references>
+
+    <references title="Informative References">
+      &RFC6356;
+      &RFC6897;
+      
+      <reference anchor='socket-api' target="https://datatracker.ietf.org/doc/draft-hesmans-mptcp-socket/">
+        <front>
+            <title abbrev="A socket API to control Multipath TCP">A socket API to control Multipath TCP</title>
+            <author initials='B.' surname='Hesmans' fullname='Benjamin Hesmans'>
+                <organization>UCLouvain</organization>
+            </author>
+            <author initials='O.' surname='Bonaventure' fullname='Olivier Bonaventure'>
+                <organization>UCLouvain</organization>
+            </author>
+            <author initials='D.' surname='Duchene' fullname='Fabien Duchene'>
+                <organization>UCLouvain</organization>
+            </author>
+            <date year="2018"/>
+        </front>
+      </reference>
+      
+      <reference anchor='socket-api2' target="https://datatracker.ietf.org/doc/draft-samar-mptcp-socketap/">
+        <front>
+            <title abbrev="Extended Socket APIs to control subflow priority in Multipath TCP">Extended Socket APIs to control subflow priority in Multipath TCP</title>
+            <author initials='S.' surname='Shailendra' fullname='Samar Shailendra'>
+                <organization>TCS Research and Innovation</organization>
+            </author>
+            <author initials='H.' surname='Rath' fullname='Hemant Kumar Rath'>
+                <organization>TCS Research and Innovation</organization>
+            </author>
+            <author initials='A.' surname='Pal' fullname='Arpan Pal'>
+                <organization>TCS Research and Innovation</organization>
+            </author>
+            <author initials='A.' surname='Mondal' fullname='Abhijit Mondal'>
+                <organization>Indian Institute of Technology Kharagpur</organization>
+            </author>
+            <date year="2018"/>
+        </front>
+      </reference>
+      
+      <reference anchor='socket-intents' target="https://conferences.sigcomm.org/co-next/2013/program/p295.pdf">
+        <front>
+            <title abbrev="Socket intents">Socket Intents: Leveraging Application Awareness for Multi-Access Connectivity</title>
+            <author initials='P.' surname='Schmidt' fullname='Philipp Schmidt'>
+                <organization>TU Berlin</organization>
+            </author>
+            <author initials='T.' surname='Enghardt' fullname='Theresa Enghardt'>
+                <organization>TU Berlin</organization>
+            </author>
+            <author initials='R.' surname='Khalili' fullname='Ramin Khalili'>
+                <organization>TU Berlin</organization>
+            </author>
+            <author initials='A.' surname='Feldmann' fullname='Anja Feldmann'>
+                <organization>TU Berlin</organization>
+            </author>
+            <date year="2013"/>
+        </front>
+      </reference>
+      
+      <reference anchor='progmp' target="https://progmp.net/froemmgen-middleware2017.pdf">
+        <front>
+            <title abbrev="ProgMP">A Programming Model for Application-defined Multipath TCP Scheduling</title>
+            <author initials='A.' surname='Froemmgen' fullname='Alexander Froemmgen'>
+                <organization>TU Darmstadt</organization>
+            </author>
+            <author initials='A.' surname='Rizk' fullname='Amr Rizk'>
+                <organization>TU Darmstadt</organization>
+            </author>
+            <author initials='T.' surname='Erbshaeusser' fullname='Tobias Erbshaeusser'>
+                <organization>TU Darmstadt</organization>
+            </author>
+            <author initials='M.' surname='Weller' fullname='Max Weller'>
+                <organization>TU Darmstadt</organization>
+            </author>
+            <author initials='B.' surname='Koldehofe' fullname='Boris Koldehofe'>
+                <organization>TU Darmstadt</organization>
+            </author>
+            <author initials='A.' surname='Buchmann' fullname='Alejandro Buchmann'>
+                <organization>TU Darmstadt</organization>
+            </author>
+            <author initials='R.' surname='Steinmetz' fullname='Ralf Steinmetz'>
+                <organization>TU Darmstadt</organization>
+            </author>
+            <date year="2017"/>
+        </front>
+      </reference>
+      
+      <reference anchor='progmp_rtt' target="https://progmp.net/froemmgen-middleware2017-demo.pdf">
+        <front>
+            <title abbrev="ProgMP">Demo: Programming Application-defined Multipath TCP Schedulers</title>
+            <author initials='A.' surname='Froemmgen' fullname='Alexander Froemmgen'>
+                <organization>TU Darmstadt</organization>
+            </author>
+            <author initials='B.' surname='Koldehofe' fullname='Boris Koldehofe'>
+                <organization>TU Darmstadt</organization>
+            </author>
+            <date year="2017"/>
+        </front>
+      </reference>
+    </references>
+  </back>
+</rfc>
