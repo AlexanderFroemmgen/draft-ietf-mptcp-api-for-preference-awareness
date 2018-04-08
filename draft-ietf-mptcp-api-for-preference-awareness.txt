@@ -91,7 +91,22 @@
       <t>This document presents an extended API for preference-aware Multipath TCP.
       This API enables the high-level specification of preferences with regard to target metrics such as acceptable round-trip time and preferred throughput rates instead of a binary notion and direct control of backup and non-backup subflows.
       This document further discusses possible ways to incorporate the specified preference information into the underlying network stack operations, i.e., 
-      when to establish additional subflows (path management) and how to map packets on subflows (scheduling).</t>
+      when to establish additional subflows (path management) and how to map packets on subflows (scheduling).
+      <xref target="fig_api_illustration" /> illustrates this approach.</t>
+      
+      <figure align="center" anchor="fig_api_illustration" title="API for preference-awareness">
+          <artwork align="center"><![CDATA[
+    Application
+         |  Throughput and 
+         |  RTT Preferences
+         V
+    Network Stack
+     |         |
+     V         V
+Subflow 1    Subflow 2
+on Path 1    on Path 2
+]]></artwork>
+      </figure>
     </section>
     
     <section title="Background" anchor="sec_background">
