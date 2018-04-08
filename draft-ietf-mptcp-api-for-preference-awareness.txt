@@ -132,7 +132,9 @@ on Path 1    on Path 2
     </section>
 
     <section title="Preference API" anchor="sec_req_and_real">
-      <t>This document presents the following four operations to specify preferences:</t>
+      <t>This document presents four operations to specify preferences, as shown in <xref target="fig_api" />.
+      These operations are designed to enable optimizations by the underlying network stack.
+      Therefore, a general specification to minimize the round-trip time or maximize the throughput is intentionally not provided.</t>
       
       <figure align="center" anchor="fig_api" title="API for preference-awareness">
           <artwork align="left"><![CDATA[
@@ -155,8 +157,13 @@ on Path 1    on Path 2
 ]]></artwork>
         </figure>
         
-        <t>These operations are designed to enable optimizations by the underlying network stack.
-        Therefore, a general specification to minimize the round-trip time or maximize the throughput is intentionally not provided.</t>
+        <t>The user might call the API operations multiple times for a single connection. 
+        This enables the application to adapt preferences for a single connection.
+        In this case, the last provided value per direction is used.</t>
+        
+        <t>The operations to set throughput requirements have a parameter denoted per_time.
+        The provided time parameter might be used to tune the aggressiveness.
+        Thus, preferring a throughput of 5 MB per 5 seconds might be treated differently than preferring a throughput of 1 MB per 1 second.</t>
        
         <t>The user of the API might provide conflicting preferences. 
         In this case, the aggressiveness value might be used to resolve conflicts. 
