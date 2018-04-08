@@ -103,10 +103,17 @@
       <t>The RFC states that scheduling, i.e., how to share traffic over the available paths, is not specified.
       Instead, the RFC mentions monetary costs of links and properties such as throughput, delay and jitter as possible aspects to be considered (<xref target="RFC6824"/> Section 3.3.8).</t>
       
-      <t>The Apple MPTCP implementation for iOS provides a limited preference API to choose between the four service types: None, Handover, Interactive, and Aggregate.
-      Some programming languages provide abstractions to specify preferences for network connections.
-      The Java socket, for example, provides the setPerformancePreferences(connectionTime, latency, bandwidth) method.
-      Further, socket intents were proposed for multi-access connectivity in <xref target="socket-intents"/>.</t>
+      <t>The Apple MPTCP implementation for iOS provides a limited API to choose between four service types: None, Handover, Interactive, and Aggregate.
+      These service types enable the underlying network stack to choose subflows accordingly, i.e.,
+      to rely on WiFi as long as possible.
+      However, the service types are limited with regard to their optimization potential. 
+      The aggregate mode, for example, might not be required in case WiFi provide a very high throughput, 
+      whereas it is usefull in case the WiFi throughput is marginal.</t>
+      
+      <t>Some programming languages provide abstractions to specify preferences for network connections.
+      The Java socket, for example, provides the setPerformancePreferences(connectionTime, latency, bandwidth) method.</t>
+      
+      <t>Further, socket intents were proposed for multi-access connectivity in <xref target="socket-intents"/>.</t>
     </section>
 
     <section title="Preference API" anchor="sec_req_and_real">
