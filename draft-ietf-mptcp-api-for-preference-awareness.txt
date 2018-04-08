@@ -89,7 +89,7 @@
       Additionally, control logic based on the subflows backup state might react to slow to retain target metrics such as preferred throughput rates.</t>
       
       <t>This document presents an extended API for preference-aware Multipath TCP.
-      This API enables the high-level specification of preferences with regard to target metrics such as acceptable round-trip time and preffered throughput rates instead of a binary notion and direct control of backup and non-backup subflows.
+      This API enables the high-level specification of preferences with regard to target metrics such as acceptable round-trip time and preferred throughput rates instead of a binary notion and direct control of backup and non-backup subflows.
       This document further discusses possible ways to incorporate the specified preference information into the underlying network stack operations, i.e., 
       when to establish additional subflows (path management) and how to map packets on subflows (scheduling).</t>
     </section>
