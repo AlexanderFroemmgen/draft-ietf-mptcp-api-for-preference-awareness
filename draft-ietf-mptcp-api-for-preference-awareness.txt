@@ -309,6 +309,7 @@ Client                                        Server
             </author>
             <date year="2013"/>
         </front>
+        <seriesInfo name="ACM CoNEXT" value="2013"/>
       </reference>
       
       <reference anchor='progmp' target="https://progmp.net/froemmgen-middleware2017.pdf">
@@ -337,6 +338,7 @@ Client                                        Server
             </author>
             <date year="2017"/>
         </front>
+        <seriesInfo name="ACM/IFIP/USENIX Middleware" value="2017"/>
       </reference>
       
       <reference anchor='progmp_rtt' target="https://progmp.net/froemmgen-middleware2017-demo.pdf">
@@ -350,6 +352,7 @@ Client                                        Server
             </author>
             <date year="2017"/>
         </front>
+        <seriesInfo name="ACM/IFIP/USENIX Middleware Poster Track" value="2017"/>
       </reference>
     </references>
   </back>
