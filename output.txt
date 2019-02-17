@@ -1,0 +1,504 @@
+
+
+
+
+Internet Engineering Task Force                             A. Froemmgen
+Internet-Draft                                              TU Darmstadt
+Intended status: Standards Track                       February 17, 2018
+Expires: August 21, 2019
+
+
+     An Extended Multipath TCP (MPTCP) API For Preference-Awareness
+             draft-ietf-mptcp-api-for-preference-awareness
+
+Abstract
+
+   Multipath TCP enables the simultaneous usage of multiple paths for a
+   single logical connection.  Paths and their network interfaces are
+   typically associated with different preferences, e.g., WiFi might be
+   preferred over metered cellular networks.
+
+   This document presents an extended API for preference-aware Multipath
+   TCP.  This API enables the high-level specification of preferences
+   with regard to target metrics such as acceptable round-trip time and
+   preferred throughput rates.  This document further discusses possible
+   ways to incorporate the specified preferences into the underlying
+   network stack operations.  These operations are in particular the
+   path management (when to establish and close subflows) and the packet
+   scheluling (how to map packets on subflows).
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on August 21, 2019.
+
+Copyright Notice
+
+   Copyright (c) 2018 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+
+
+
+
+Froemmgen                Expires August 21, 2019                [Page 1]
+
+Internet-DraftAn Extended Multipath TCP (MPTCP) API For PreFebruary 2018
+
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents
+   (https://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.  Please review these documents
+   carefully, as they describe your rights and restrictions with respect
+   to this document.  Code Components extracted from this document must
+   include Simplified BSD License text as described in Section 4.e of
+   the Trust Legal Provisions and are provided without warranty as
+   described in the Simplified BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Background  . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Preference API  . . . . . . . . . . . . . . . . . . . . . . .   4
+   4.  Preference-aware Path Management  . . . . . . . . . . . . . .   5
+   5.  Preference-aware Scheduling . . . . . . . . . . . . . . . . .   5
+   6.  Protocol Level Discussion . . . . . . . . . . . . . . . . . .   6
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
+   8.  Open Questions  . . . . . . . . . . . . . . . . . . . . . . .   7
+   9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   7
+     9.1.  Normative References  . . . . . . . . . . . . . . . . . .   7
+     9.2.  Informative References  . . . . . . . . . . . . . . . . .   8
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   9
+
+1.  Introduction
+
+   Multipath TCP [RFC6824] is a set of extensions to regular TCP
+   [RFC0793] which enables a transport connection to use multiple paths
+   simultaneously.  Previous RFCs specify the required protocol
+   extensions [RFC6824].  Path preferences are restricted to the binary
+   notion of backup subflows, i.e., a subflow where the receiver has
+   indicated B=1 SHOULD NOT be used to send data unless there are no
+   usable subflows where B=0.
+
+   Previous work on MPTCP APIs proposed basic APIs to enable and disable
+   MTPCP [RFC6897] or extended socket APIs to control the subflow
+   establishment, the subflow teardown, and the subflow backup state
+   [socket-api] [socket-api2].
+
+   Controlling the subflow establishment and the subflow backup state
+   enables to choose the used subflows.  However, applications and their
+   developers might benefit from a higher-level of abstraction.
+   Implementing backup subflow control logic is error prone and requires
+   a lot of effort and experience.  Additionally, control logic based on
+   the subflows backup state might react to slow to retain target
+   metrics such as preferred throughput rates.
+
+
+
+
+Froemmgen                Expires August 21, 2019                [Page 2]
+
+Internet-DraftAn Extended Multipath TCP (MPTCP) API For PreFebruary 2018
+
+
+   This document presents an extended API for preference-aware Multipath
+   TCP.  This API enables the high-level specification of preferences
+   with regard to target metrics such as acceptable round-trip time and
+   preferred throughput rates instead of a binary notion and direct
+   control of backup and non-backup subflows.  This document further
+   discusses possible ways to incorporate the specified preference
+   information into the underlying network stack operations, i.e., when
+   to establish additional subflows (path management) and how to map
+   packets on subflows (scheduling).  Figure 1 illustrates this
+   approach.
+
+                            Application
+                                 |  Throughput and
+                                 |  RTT Preferences
+                                 V
+                            Network Stack
+                             |         |
+                             V         V
+                        Subflow 1    Subflow 2
+                        on Path 1    on Path 2
+
+                  Figure 1: API for preference-awareness
+
+2.  Background
+
+   Multipath TCP provides a binary notion for subflow priorities.
+   Backup subflows should only be used if there are no regular paths
+   available.  Hosts can indicate in the initial subflow establishment
+   if a subflow should be treated as backup subflow or change the
+   subflows backup state during operation using MP_PRIO options
+   ([RFC6824] Section 2.5).
+
+   The RFC states that scheduling, i.e., how to share traffic over the
+   available paths, is not specified.  Instead, the RFC mentions
+   monetary costs of links and properties such as throughput, delay and
+   jitter as possible aspects to be considered ([RFC6824]
+   Section 3.3.8).
+
+   The Apple MPTCP implementation for iOS provides a limited API to
+   choose between four service types: None, Handover, Interactive, and
+   Aggregate.  These service types enable the underlying network stack
+   to choose subflows accordingly, i.e., to rely on WiFi as long as
+   possible.  However, the service types are limited with regard to
+   their optimization potential.  The aggregate mode, for example, might
+   not be required in case WiFi provide a very high throughput, whereas
+   it is usefull in case the WiFi throughput is marginal.
+
+
+
+
+
+Froemmgen                Expires August 21, 2019                [Page 3]
+
+Internet-DraftAn Extended Multipath TCP (MPTCP) API For PreFebruary 2018
+
+
+   Some programming languages provide abstractions to specify
+   preferences for network connections.  The Java socket, for example,
+   provides the setPerformancePreferences(connectionTime, latency,
+   bandwidth) method.
+
+   Further, socket intents were proposed for multi-access connectivity
+   in [socket-intents].
+
+3.  Preference API
+
+   This document presents four operations to specify preferences, as
+   shown in Figure 2.  These operations are designed to enable
+   optimizations by the underlying network stack.  Therefore, a general
+   specification to minimize the round-trip time or maximize the
+   throughput is intentionally not provided.
+
+     try_throughput_at_least(
+       value,
+       per_time,
+       direction [up/down],
+       aggressiveness [optional, 0 - 10)
+
+     try_rtt_below(
+       value,
+       aggressiveness [optional, 0 - 10])
+
+     expected_remaining_duration(
+       value)
+
+     expected_total_transfer(
+       value,
+       direction [up/down])
+
+                  Figure 2: API for preference-awareness
+
+   The user might call the API operations multiple times for a single
+   connection.  This enables the application to adapt preferences for a
+   single connection.  In this case, the last provided value per
+   direction is used.
+
+   The operations to set throughput requirements have a parameter
+   denoted per_time.  The provided time parameter might be used to tune
+   the aggressiveness.  Thus, preferring a throughput of 5 MB per 5
+   seconds might be treated differently than preferring a throughput of
+   1 MB per 1 second.
+
+   The user of the API might provide conflicting preferences.  In this
+   case, the aggressiveness value might be used to resolve conflicts.
+
+
+
+Froemmgen                Expires August 21, 2019                [Page 4]
+
+Internet-DraftAn Extended Multipath TCP (MPTCP) API For PreFebruary 2018
+
+
+   In case the specified preferences are inappropriate, e.g., to prefer
+   a round-trip time of zero and very large throughput values, the
+   underlying network stack might always fallback to normal operation.
+   In particular, the API does not provide guarantees with regard to the
+   specified preferences and does not enable the specification of hard
+   requirements.
+
+   The API focuses on the most important metrics throughput and round-
+   trip time.  Additional metrics, such as the round-trip time variance,
+   might be included in the future.
+
+   The mapping of the specified preferences to the underlying network
+   stack operations might depend on additional configurations.  This
+   decouples the application preferences from the path preferences of
+   the user.  Thus, the network stack might consider preferences
+   differently for a user with unlimited cellular network access
+   compared with a user with metered cellular network access.
+
+4.  Preference-aware Path Management
+
+   The provided preferences might be used for an optimized path
+   management.
+
+   In case the network stack detects that throughput or round-trip time
+   preferences are not fulfilled, it might trigger the creation of
+   additional subflows.  In case the network stack detects that all
+   preferences can be fulfilled by a single subflow, the other subflows
+   might be closed.
+
+   In case the application provides an expected remaining connection
+   duration, this information might be considered before triggering the
+   creation of additional subflows.
+
+5.  Preference-aware Scheduling
+
+   The provided preferences might be used for an optimized packet
+   scheduling, i.e., mapping of packets on subflows.
+
+   In case the network stack detects that all preferences can be
+   fulfilled on non-backup subflows, packet scheduling can be restricted
+   to these non-backup subflows.  In case round-trip time preferences
+   cannot be fulfilled by non-backup subflows, the scheduler can
+   consider to use backup subflows if their round-trip times are
+   significantly better, as illustrated in [progmp_rtt].
+
+   The scheduler might further split traffic preference-aware to retain
+   throughput targets and subflow preferences at the same time, as
+   illustrated in [progmp].
+
+
+
+Froemmgen                Expires August 21, 2019                [Page 5]
+
+Internet-DraftAn Extended Multipath TCP (MPTCP) API For PreFebruary 2018
+
+
+6.  Protocol Level Discussion
+
+   Both communication partners might have to communicate to fulfill the
+   provided preferences.  There are three alternatives for this
+   communication.
+
+   In the first alternative, one communication partner controls the
+   other side by setting backup subflows accordingly.  This alternative
+   does not require changes at the communication partner.  The
+   communication delays and possible asymmetric knowledge limit this
+   alternative.  In case the controlling communication partner detects
+   that a preference is not fulfilled, it requires at least a halve
+   round-trip time to change the backup state at the communication
+   partner.  Fine granular scheduling decisions, e.g., to transfer a
+   constant bitrate stream preference-aware, are not possible due to
+   this communication delay.
+
+                     TCP OPTION
+                     BACKUP = 1
+           <------------------------------>
+                     Subflow 1
+   Client                                        Server
+                     Subflow 2
+           <------------------------------>
+
+      Figure 3: Controlling the communication partner by setting the
+                           subflow backup state
+
+   The second alternative extends the MPTCP options to transfer
+   preference information.  This alternative requires protocol changes
+   and therefore changes at the communication partner.
+
+                     TCP OPTION
+                  USE IF RTT ABOVE X
+           <------------------------------>
+                     Subflow 1
+   Client                                        Server
+                     TCP OPTION
+              USE IF THROUGHPUT BELOW X
+           <---------------------------->
+                     Subflow 2
+
+      Figure 4: Controlling the communication partner by transferring
+             preference information in extended MPTCP options
+
+   The third alternative uses an application layer protocol to transfer
+   preference information decoupled from MPTCP.  This alternative does
+   not require protocol changes.
+
+
+
+Froemmgen                Expires August 21, 2019                [Page 6]
+
+Internet-DraftAn Extended Multipath TCP (MPTCP) API For PreFebruary 2018
+
+
+           <------------------------------>
+                     Subflow 1
+   Client                                        Server
+     |               Subflow 2                     |
+     |      <------------------------------>       |
+     |                                             |
+     -----------------------------------------------
+               Dedicated Control Channel
+
+      Figure 5: Controlling the communication partner by transferring
+         preference information with an application layer protocol
+
+7.  Security Considerations
+
+   There are no known security implications.
+
+8.  Open Questions
+
+   In general, we assume the binary subflow preference notion of
+   preferred vs non preferred.
+
+   Do we have to distinguish and discuss the difference between
+   subflows, paths, or interfaces?
+
+   This API is very limited.  E.g., we cannot express to use backup
+   subflows BS instead of non-backup subflows NBS iff min(BS.RTT) is
+   less than X and min(NBS.RTT) is above Y (see [progmp_rtt].
+
+   What about signaling the end of an important application transfer
+   unit?  This is somehow related to preferences with regard to flow
+   completion times.
+
+9.  References
+
+9.1.  Normative References
+
+   [RFC0793]  Postel, J., "Transmission Control Protocol", STD 7,
+              RFC 793, DOI 10.17487/RFC0793, September 1981,
+              <https://www.rfc-editor.org/info/rfc793>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+
+
+
+
+
+
+Froemmgen                Expires August 21, 2019                [Page 7]
+
+Internet-DraftAn Extended Multipath TCP (MPTCP) API For PreFebruary 2018
+
+
+   [RFC6182]  Ford, A., Raiciu, C., Handley, M., Barre, S., and J.
+              Iyengar, "Architectural Guidelines for Multipath TCP
+              Development", RFC 6182, DOI 10.17487/RFC6182, March 2011,
+              <https://www.rfc-editor.org/info/rfc6182>.
+
+   [RFC6824]  Ford, A., Raiciu, C., Handley, M., and O. Bonaventure,
+              "TCP Extensions for Multipath Operation with Multiple
+              Addresses", RFC 6824, DOI 10.17487/RFC6824, January 2013,
+              <https://www.rfc-editor.org/info/rfc6824>.
+
+9.2.  Informative References
+
+   [progmp]   Froemmgen, A., Rizk, A., Erbshaeusser, T., Weller, M.,
+              Koldehofe, B., Buchmann, A., and R. Steinmetz, "A
+              Programming Model for Application-defined Multipath TCP
+              Scheduling", ACM/IFIP/USENIX Middleware 2017, 2017,
+              <https://progmp.net/froemmgen-middleware2017.pdf>.
+
+   [progmp_rtt]
+              Froemmgen, A. and B. Koldehofe, "Demo: Programming
+              Application-defined Multipath TCP Schedulers", ACM/IFIP/
+              USENIX Middleware Poster Track 2017, 2017,
+              <https://progmp.net/froemmgen-middleware2017-demo.pdf>.
+
+   [RFC6356]  Raiciu, C., Handley, M., and D. Wischik, "Coupled
+              Congestion Control for Multipath Transport Protocols",
+              RFC 6356, DOI 10.17487/RFC6356, October 2011,
+              <https://www.rfc-editor.org/info/rfc6356>.
+
+   [RFC6897]  Scharf, M. and A. Ford, "Multipath TCP (MPTCP) Application
+              Interface Considerations", RFC 6897, DOI 10.17487/RFC6897,
+              March 2013, <https://www.rfc-editor.org/info/rfc6897>.
+
+   [socket-api]
+              Hesmans, B., Bonaventure, O., and D. Duchene, "A socket
+              API to control Multipath TCP", 2018,
+              <https://datatracker.ietf.org/doc/
+              draft-hesmans-mptcp-socket/>.
+
+   [socket-api2]
+              Shailendra, S., Rath, H., Pal, A., and A. Mondal,
+              "Extended Socket APIs to control subflow priority in
+              Multipath TCP", 2018, <https://datatracker.ietf.org/doc/
+              draft-samar-mptcp-socketap/>.
+
+
+
+
+
+
+
+Froemmgen                Expires August 21, 2019                [Page 8]
+
+Internet-DraftAn Extended Multipath TCP (MPTCP) API For PreFebruary 2018
+
+
+   [socket-intents]
+              Schmidt, P., Enghardt, T., Khalili, R., and A. Feldmann,
+              "Socket Intents: Leveraging Application Awareness for
+              Multi-Access Connectivity", ACM CoNEXT 2013, 2013,
+              <https://conferences.sigcomm.org/co-next/2013/program/
+              p295.pdf>.
+
+Author's Address
+
+   Alexander Froemmgen
+   TU Darmstadt
+
+   EMail: alexander.froemmgen@kom.tu-darmstadt.de
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Froemmgen                Expires August 21, 2019                [Page 9]
